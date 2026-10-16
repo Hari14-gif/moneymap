@@ -1,3 +1,4 @@
+import pandas as pd
 def calculate_summary(df, count_card_payments=True):
     """Income, expenses, net cash flow and savings rate."""
     transfers = df["category"] == "Internal Transfer"
@@ -27,3 +28,26 @@ def calculate_summary(df, count_card_payments=True):
         "net_cash_flow": net,
         "savings_rate": savings_rate,
     }
+    
+    
+def pct_change(old, new):
+    """Percent change. Returns None when old is 0 (no sensible percentage)."""
+    if old == 0:
+        return None
+    return (new - old) / old * 100
+
+
+def category_changes(df, old_month, new_month):
+    """Spending per category in two months (YYYY-MM), plus percent change."""
+    spend = df[(df["amount"] < 0) & (df["category"] != "Internal Transfer")].copy()
+    spend["month"] = spend["date"].dt.to_period("M").astype(str)
+
+    table = spend.pivot_table(
+        index="category", columns="month", values="amount", aggfunc="sum"
+    ).abs()
+    table = table.reindex(columns=[old_month, new_month], fill_value=0).fillna(0)
+
+    table["change_pct"] = [
+        pct_change(old, new) for old, new in zip(table[old_month], table[new_month])
+    ]
+    return table
