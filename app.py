@@ -10,7 +10,17 @@ from src.analytics import calculate_summary
 st.title("MoneyMap")
 
 # Load -> clean -> categorize
-raw = load_transactions("data/sample_transactions.csv")
+uploaded = st.file_uploader("Upload your transactions CSV", type="csv")
+
+try:
+    if uploaded is not None:
+        raw = load_transactions(uploaded)
+    else:
+        raw = load_transactions("data/sample_transactions.csv")
+        st.caption("Showing sample data. Upload a CSV to use your own.")
+except ValueError as e:
+    st.error(str(e))
+    st.stop()
 clean, rejected, summary = clean_transactions(raw)
 clean = add_categories(clean)
 
