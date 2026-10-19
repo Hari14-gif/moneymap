@@ -6,7 +6,7 @@ from src.data_loader import load_transactions
 from src.data_cleaning import clean_transactions
 from src.categorization import add_categories
 from src.analytics import calculate_summary
-
+from src.analytics import calculate_summary, category_changes, category_shares
 st.title("MoneyMap")
 
 # Load -> clean -> categorize
@@ -66,3 +66,30 @@ fig2 = px.bar(
     title="Monthly income vs expenses",
 )
 st.plotly_chart(fig2, use_container_width=True)
+
+# Concentration
+share, top3 = category_shares(clean)
+if top3 is not None:
+    st.metric("Top 3 categories' share of spending", f"{top3:.1f}%")
+
+# Month vs month
+st.subheader("Month vs month")
+months = sorted(clean["date"].dt.to_period("M").astype(str).unique())
+
+if len(months) < 2:
+    st.info("Need at least 2 months of data to compare.")
+else:
+    c1, c2 = st.columns(2)
+    old_m = c1.selectbox("Compare", months, index=len(months) - 2)
+    new_m = c2.selectbox("with", months, index=len(months) - 1)
+
+    changes = category_changes(clean, old_m, new_m)
+
+    def label(row):
+        if pd.isna(row["change_pct"]):
+            return "new" if row[new_m] > 0 else "-"
+        return f"{row['change_pct']:+.1f}%"
+
+    changes["change"] = changes.apply(label, axis=1)
+    st.dataframe(changes[[old_m, new_m, "change"]])
+    

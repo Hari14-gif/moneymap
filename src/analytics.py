@@ -51,3 +51,15 @@ def category_changes(df, old_month, new_month):
         pct_change(old, new) for old, new in zip(table[old_month], table[new_month])
     ]
     return table
+
+def category_shares(df, top_n=3):
+    """Each category's share of total spending, plus the top-N combined share."""
+    spend = df[(df["amount"] < 0) & (df["category"] != "Internal Transfer")]
+    by_cat = spend.groupby("category")["amount"].sum().abs().sort_values(ascending=False)
+
+    total = by_cat.sum()
+    if total == 0:
+        return by_cat * 0, None   # no spending, so no shares
+
+    share = by_cat / total * 100
+    return share, share.head(top_n).sum()
