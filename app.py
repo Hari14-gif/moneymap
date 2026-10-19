@@ -7,6 +7,9 @@ from src.data_cleaning import clean_transactions
 from src.categorization import add_categories
 from src.analytics import calculate_summary
 from src.analytics import calculate_summary, category_changes, category_shares
+from src.insights import rising_category_insights
+
+
 st.title("MoneyMap")
 
 # Load -> clean -> categorize
@@ -92,4 +95,17 @@ else:
 
     changes["change"] = changes.apply(label, axis=1)
     st.dataframe(changes[[old_m, new_m, "change"]])
+    
+    # Insights
+st.subheader("Insights")
+if len(months) >= 2:
+    found = rising_category_insights(clean, old_m, new_m)
+    if not found:
+        st.write("No notable increases between these months.")
+    for item in found:
+        st.markdown(f"**{item['title']}**")
+        st.write(item["observation"])
+        st.caption(f"Evidence: {item['evidence']}")
+        if item["caveat"]:
+            st.caption(f"Caveat: {item['caveat']}")
     
