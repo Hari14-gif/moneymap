@@ -27,6 +27,19 @@ except ValueError as e:
 clean, rejected, summary = clean_transactions(raw)
 clean = add_categories(clean)
 
+# Data quality
+with st.expander("Data quality"):
+    q1, q2, q3, q4 = st.columns(4)
+    q1.metric("Imported rows", summary["imported"])
+    q2.metric("Valid rows", summary["valid"])
+    q3.metric("Rejected rows", summary["rejected"])
+    q4.metric("Duplicates removed", summary["duplicates_removed"])
+    st.caption(f"Date format detected: {summary['date_format']}")
+
+    if summary["rejected"] > 0:
+        st.warning("These rows were set aside because the date or amount was invalid:")
+        st.dataframe(rejected)
+
 # Calculate
 result = calculate_summary(clean)
 
