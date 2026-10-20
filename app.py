@@ -8,7 +8,7 @@ from src.categorization import add_categories
 from src.analytics import calculate_summary
 from src.analytics import calculate_summary, category_changes, category_shares
 from src.insights import rising_category_insights, new_spending_insights
-
+from src.recurring_payments import find_recurring
 
 st.title("MoneyMap")
 
@@ -123,3 +123,18 @@ if len(months) >= 2:
         st.caption(f"Evidence: {item['evidence']}")
         if item["caveat"]:
             st.caption(f"Caveat: {item['caveat']}")
+
+# Recurring payments
+st.subheader("Possible recurring payments")
+recurring = find_recurring(clean)
+if recurring.empty:
+    st.write("No recurring payments found (needs at least 3 similar payments).")
+else:
+    shown = recurring.copy()
+    shown["typical_amount"] = shown["typical_amount"].map(lambda v: f"₹{v:,.0f}")
+    shown["last_seen"] = shown["last_seen"].dt.strftime("%Y-%m-%d")
+    st.dataframe(shown)
+    st.caption(
+        "Based on past payments only. This is not a prediction of future payments, "
+        "and some habits (like groceries) can look recurring by chance."
+    )
