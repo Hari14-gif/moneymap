@@ -63,3 +63,24 @@ def category_shares(df, top_n=3):
 
     share = by_cat / total * 100
     return share, share.head(top_n).sum()
+
+def monthly_summary(df):
+    """Income, expenses, net cash flow and savings rate for each month."""
+    columns = ["month", "income", "expenses", "net_cash_flow", "savings_rate"]
+    rows = []
+    for month, group in df.groupby(df["date"].dt.to_period("M").astype(str)):
+        r = calculate_summary(group)
+        rows.append({
+            "month": month,
+            "income": r["income"],
+            "expenses": r["expenses"],
+            "net_cash_flow": r["net_cash_flow"],
+            "savings_rate": r["savings_rate"],
+        })
+
+    if not rows:
+        return pd.DataFrame(columns=columns + ["savings_rate_change_pts"])
+
+    out = pd.DataFrame(rows, columns=columns)
+    out["savings_rate_change_pts"] = out["savings_rate"].diff()
+    return out
