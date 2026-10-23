@@ -6,7 +6,13 @@ from src.data_loader import load_transactions
 from src.data_cleaning import clean_transactions
 from src.categorization import add_categories
 from src.analytics import calculate_summary
-from src.analytics import calculate_summary, category_changes, category_shares, monthly_summary
+from src.analytics import (
+    calculate_summary,
+    category_changes,
+    category_shares,
+    monthly_summary,
+    is_incomplete_last_month,
+)   
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
 
@@ -97,7 +103,11 @@ if len(months) < 2:
 else:
     c1, c2 = st.columns(2)
     old_m = c1.selectbox("Compare", months, index=len(months) - 2)
-    new_m = c2.selectbox("with", months, index=len(months) - 1)
+    if new_m == months[-1] and is_incomplete_last_month(clean):
+        st.warning(
+            f"{new_m} may be incomplete: the data ends well before the end of the month. "
+            "Changes compared with a full month can look smaller than they really are."
+        )
 
     changes = category_changes(clean, old_m, new_m)
 
