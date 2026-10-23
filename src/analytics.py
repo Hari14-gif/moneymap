@@ -84,3 +84,11 @@ def monthly_summary(df):
     out = pd.DataFrame(rows, columns=columns)
     out["savings_rate_change_pts"] = out["savings_rate"].diff()
     return out
+
+def is_incomplete_last_month(df, tolerance_days=5):
+    """True if the data stops well before the end of its last month."""
+    if df.empty:
+        return False
+    last_date = df["date"].max()
+    month_end = last_date + pd.offsets.MonthEnd(0)
+    return (month_end - last_date).days > tolerance_days
