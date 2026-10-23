@@ -6,7 +6,7 @@ from src.data_loader import load_transactions
 from src.data_cleaning import clean_transactions
 from src.categorization import add_categories
 from src.analytics import calculate_summary
-from src.analytics import calculate_summary, category_changes, category_shares
+from src.analytics import calculate_summary, category_changes, category_shares, monthly_summary
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
 
@@ -137,4 +137,27 @@ else:
     st.caption(
         "Based on past payments only. This is not a prediction of future payments, "
         "and some habits (like groceries) can look recurring by chance."
+    )   
+    # Savings rate trend
+st.subheader("Savings rate trend")
+trend = monthly_summary(clean)
+
+if len(trend) < 2:
+    st.info("Need at least 2 months of data to show a trend.")
+else:
+    fig3 = px.line(
+        trend,
+        x="month",
+        y="savings_rate",
+        markers=True,
+        title="Monthly savings rate (%)",
     )
+    st.plotly_chart(fig3, use_container_width=True)
+
+    last = trend.iloc[-1]
+    if pd.notna(last["savings_rate_change_pts"]):
+        st.caption(
+            f"Latest month: {last['savings_rate']:.1f}% "
+            f"({last['savings_rate_change_pts']:+.1f} percentage points vs the month before). "
+            "Based on recorded transactions, not verified bank balances."
+        )
