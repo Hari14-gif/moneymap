@@ -92,3 +92,14 @@ def is_incomplete_last_month(df, tolerance_days=5):
     last_date = df["date"].max()
     month_end = last_date + pd.offsets.MonthEnd(0)
     return (month_end - last_date).days > tolerance_days
+
+def top_merchants(df, n=5):
+    """Top-N merchants by total spending, with each one's share of all spending."""
+    spend = df[(df["amount"] < 0) & (df["category"] != "Internal Transfer")]
+    if spend.empty:
+        return pd.DataFrame(columns=["total", "payments", "share_pct"])
+
+    top = spend.groupby("description")["amount"].agg(total="sum", payments="count")
+    top["total"] = top["total"].abs()
+    top["share_pct"] = top["total"] / top["total"].sum() * 100   # share of ALL spending
+    return top.sort_values("total", ascending=False).head(n)
