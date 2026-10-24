@@ -1,24 +1,24 @@
 import streamlit as st
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
 
 from src.data_loader import load_transactions
 from src.data_cleaning import clean_transactions
 from src.categorization import add_categories
-from src.analytics import calculate_summary
 from src.analytics import (
     calculate_summary,
     category_changes,
     category_shares,
     monthly_summary,
     is_incomplete_last_month,
-)   
+    top_merchants,
+)
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
 
 st.title("MoneyMap")
 
-# Load -> clean -> categorize
+# Load (upload or sample)
 uploaded = st.file_uploader("Upload your transactions CSV", type="csv")
 
 try:
@@ -30,8 +30,11 @@ try:
 except ValueError as e:
     st.error(str(e))
     st.stop()
+
+# Clean -> categorize -> calculate
 clean, rejected, summary = clean_transactions(raw)
 clean = add_categories(clean)
+result = calculate_summary(clean)
 
 # Data quality
 with st.expander("Data quality"):
@@ -46,15 +49,15 @@ with st.expander("Data quality"):
         st.warning("These rows were set aside because the date or amount was invalid:")
         st.dataframe(rejected)
 
-# Calculate
-result = calculate_summary(clean)
-
 # 4 numbers
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Income", f"₹{result['income']:,.0f}")
 col2.metric("Expenses", f"₹{result['expenses']:,.0f}")
 col3.metric("Net cash flow", f"₹{result['net_cash_flow']:,.0f}")
-col4.metric("Savings rate", f"{result['savings_rate']:.1f}%")
+if result["savings_rate"] is not None:
+    col4.metric("Savings rate", f"{result['savings_rate']:.1f}%")
+else:
+    col4.metric("Savings rate", "n/a")
 
 # Spending by category
 spend = clean[(clean["amount"] < 0) & (clean["category"] != "Internal Transfer")]
@@ -68,7 +71,6 @@ fig = px.bar(
     title="Spending by category",
 )
 fig.update_layout(yaxis={"categoryorder": "total ascending"})
-
 st.plotly_chart(fig, use_container_width=True)
 
 # Monthly income vs expenses
@@ -96,13 +98,15 @@ if top3 is not None:
 
 # Month vs month
 st.subheader("Month vs month")
-months = sorted(clean["date"].dt.to_period("M").astype(str).unique())
+months = sorted(clean["month"].unique())
 
 if len(months) < 2:
     st.info("Need at least 2 months of data to compare.")
 else:
     c1, c2 = st.columns(2)
     old_m = c1.selectbox("Compare", months, index=len(months) - 2)
+    new_m = c2.selectbox("with", months, index=len(months) - 1)
+
     if new_m == months[-1] and is_incomplete_last_month(clean):
         st.warning(
             f"{new_m} may be incomplete: the data ends well before the end of the month. "
@@ -118,8 +122,8 @@ else:
 
     changes["change"] = changes.apply(label, axis=1)
     st.dataframe(changes[[old_m, new_m, "change"]])
-    
-    # Insights
+
+# Insights
 st.subheader("Insights")
 if len(months) >= 2:
     found = rising_category_insights(clean, old_m, new_m)
@@ -147,8 +151,9 @@ else:
     st.caption(
         "Based on past payments only. This is not a prediction of future payments, "
         "and some habits (like groceries) can look recurring by chance."
-    )   
-    # Savings rate trend
+    )
+
+# Savings rate trend
 st.subheader("Savings rate trend")
 trend = monthly_summary(clean)
 
@@ -171,3 +176,24 @@ else:
             f"({last['savings_rate_change_pts']:+.1f} percentage points vs the month before). "
             "Based on recorded transactions, not verified bank balances."
         )
+
+# Top merchants
+st.subheader("Top merchants by spending")
+merchants = top_merchants(clean)
+
+if merchants.empty:
+    st.write("No spending to show.")
+else:
+    fig4 = px.bar(
+        merchants.reset_index(),
+        x="total",
+        y="description",
+        orientation="h",
+        title="Top 5 merchants",
+    )
+    fig4.update_layout(yaxis={"categoryorder": "total ascending"})
+    st.plotly_chart(fig4, use_container_width=True)
+    st.caption(
+        "Rent and card bill payments are listed as they appear in your data. "
+        "Card payments stand in for card purchases that are not recorded."
+    )
