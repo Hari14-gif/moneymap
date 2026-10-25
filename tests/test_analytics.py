@@ -26,7 +26,6 @@ def test_refund_reduces_expenses():
     result = calculate_summary(df)
     assert result["expenses"] == 300
 
-
 def test_zero_income_gives_no_savings_rate():
     df = make_df([(-400, "Groceries")])
     result = calculate_summary(df)
