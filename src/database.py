@@ -1,0 +1,53 @@
+import sqlite3
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS import_batches (
+    id INTEGER PRIMARY KEY,
+    filename TEXT NOT NULL,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY,
+    batch_id INTEGER NOT NULL REFERENCES import_batches(id),
+    date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'Uncategorized',
+    amount REAL NOT NULL,
+    UNIQUE (date, description, amount)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category);
+"""
+
+
+def connect(path="data/moneymap.db"):
+    """Open the database (creating the tables on first use)."""
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executescript(SCHEMA)
+    return conn
+
+
+def import_transactions(conn, df, filename):
+    """Save cleaned transactions. Repeats are skipped, so importing twice is safe."""
+    cur = conn.execute("INSERT INTO import_batches (filename) VALUES (?)", (filename,))
+    batch_id = cur.lastrowid
+
+    rows = [
+        (batch_id, d.strftime("%Y-%m-%d"), desc, cat, float(amt))
+        for d, desc, cat, amt in zip(
+            df["date"], df["description"], df["category"], df["amount"]
+        )
+    ]
+
+    cur = conn.executemany(
+        "INSERT OR IGNORE INTO transactions "
+        "(batch_id, date, description, category, amount) VALUES (?, ?, ?, ?, ?)",
+        rows,
+    )
+    conn.commit()
+
+    inserted = cur.rowcount
+    return {"batch_id": batch_id, "inserted": inserted, "skipped": len(rows) - inserted}
