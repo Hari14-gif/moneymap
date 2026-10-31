@@ -25,3 +25,24 @@ def summary_csv(result, start, end, currency="INR"):
         ("Limitation", "Transaction-based estimate, not a verified bank balance"),
     ]
     return pd.DataFrame(rows, columns=["item", "value"]).to_csv(index=False).encode("utf-8")
+
+def category_report_csv(df, start, end, currency="INR"):
+    """Spending by category (with each share of total) plus a header explaining the report."""
+    spend = df[(df["amount"] < 0) & (df["category"] != "Internal Transfer")]
+
+    table = spend.groupby("category")["amount"].agg(total="sum", payments="count")
+    table["total"] = table["total"].abs()
+    total = table["total"].sum()
+    table["share_pct"] = (table["total"] / total * 100).round(1) if total > 0 else 0
+    table = table.sort_values("total", ascending=False).reset_index()
+
+    header = (
+        "Category spending report\n"
+        f"Date range,{start} to {end}\n"
+        f"Currency,{currency}\n"
+        "Note,Internal transfers are excluded\n"
+        "Note,Refunds are not netted in this table (they reduce total expenses in the summary report)\n"
+        "Note,Categories are suggestions from keyword rules\n"
+        "\n"
+    )
+    return (header + table.to_csv(index=False)).encode("utf-8")
