@@ -46,3 +46,19 @@ def category_report_csv(df, start, end, currency="INR"):
         "\n"
     )
     return (header + table.to_csv(index=False)).encode("utf-8")
+
+def insights_report_csv(insights, old_month, new_month, start, end, currency="INR"):
+    """The insights shown on screen, with a header that explains what they are."""
+    header = (
+        "Insights report\n"
+        f"Date range,{start} to {end}\n"
+        f"Compared months,{old_month} vs {new_month}\n"
+        f"Currency,{currency}\n"
+        "Note,Insights are rule-based observations from your recorded transactions\n"
+        "Note,They show what changed, not why it changed\n"
+        "Note,Transaction-based estimate, not a verified bank balance\n"
+        "\n"
+    )
+    columns = ["title", "observation", "evidence", "caveat"]
+    table = pd.DataFrame(insights, columns=columns)
+    return (header + table.to_csv(index=False)).encode("utf-8")

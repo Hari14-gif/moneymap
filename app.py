@@ -16,10 +16,14 @@ from src.analytics import (
 )
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
-from src.reports import transactions_csv, summary_csv
+from src.reports import (
+    transactions_csv,
+    summary_csv,
+    category_report_csv,
+    insights_report_csv,
+)
 
 st.title("MoneyMap")
-
 # Load (upload or sample)
 uploaded = st.file_uploader("Upload your transactions CSV", type="csv")
 
@@ -93,17 +97,23 @@ else:
     col4.metric("Savings rate", "n/a")
 
 # Downloads
-d1, d2 = st.columns(2)
+d1, d2, d3 = st.columns(3)
 d1.download_button(
-    "Download filtered transactions (CSV)",
+    "Transactions (CSV)",
     transactions_csv(clean),
     file_name="moneymap_transactions.csv",
     mime="text/csv",
 )
 d2.download_button(
-    "Download summary (CSV)",
+    "Summary (CSV)",
     summary_csv(result, start, end),
     file_name="moneymap_summary.csv",
+    mime="text/csv",
+)
+d3.download_button(
+    "Category report (CSV)",
+    category_report_csv(clean, start, end),
+    file_name="moneymap_category_report.csv",
     mime="text/csv",
 )
 
@@ -186,6 +196,13 @@ if len(months) >= 2:
         st.caption(f"Evidence: {item['evidence']}")
         if item["caveat"]:
             st.caption(f"Caveat: {item['caveat']}")
+
+    st.download_button(
+        "Insights report (CSV)",
+        insights_report_csv(found, old_m, new_m, start, end),
+        file_name="moneymap_insights.csv",
+        mime="text/csv",
+    )
 else:
     st.write("Select a range with at least 2 months to see insights.")
 
