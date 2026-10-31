@@ -103,3 +103,14 @@ def top_merchants(df, n=5):
     top["total"] = top["total"].abs()
     top["share_pct"] = top["total"] / top["total"].sum() * 100   # share of ALL spending
     return top.sort_values("total", ascending=False).head(n)
+
+def filter_transactions(df, start=None, end=None, categories=None):
+    """Keep rows in the date range and (optionally) in the chosen categories."""
+    out = df
+    if start is not None:
+        out = out[out["date"] >= pd.Timestamp(start)]
+    if end is not None:
+        out = out[out["date"] <= pd.Timestamp(end)]
+    if categories:                      # None or an empty list means "all categories"
+        out = out[out["category"].isin(categories)]
+    return out
