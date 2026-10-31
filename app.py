@@ -12,9 +12,11 @@ from src.analytics import (
     monthly_summary,
     is_incomplete_last_month,
     top_merchants,
+    filter_transactions,
 )
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
+from src.reports import transactions_csv, summary_csv
 
 st.title("MoneyMap")
 
@@ -31,12 +33,11 @@ except ValueError as e:
     st.error(str(e))
     st.stop()
 
-# Clean -> categorize -> calculate
+# Clean -> categorize
 clean, rejected, summary = clean_transactions(raw)
 clean = add_categories(clean)
-result = calculate_summary(clean)
 
-# Data quality
+# Data quality (always about the whole file, not the filters)
 with st.expander("Data quality"):
     q1, q2, q3, q4 = st.columns(4)
     q1.metric("Imported rows", summary["imported"])
@@ -49,6 +50,38 @@ with st.expander("Data quality"):
         st.warning("These rows were set aside because the date or amount was invalid:")
         st.dataframe(rejected)
 
+if clean.empty:
+    st.error("No valid transactions to show.")
+    st.stop()
+
+# Filters (applied ONCE, so every number below agrees)
+full = clean
+st.sidebar.header("Filters")
+min_d = full["date"].min().date()
+max_d = full["date"].max().date()
+
+picked = st.sidebar.date_input(
+    "Date range", value=(min_d, max_d), min_value=min_d, max_value=max_d
+)
+if not (isinstance(picked, tuple) and len(picked) == 2):
+    st.sidebar.info("Pick an end date to finish the range.")
+    st.stop()
+start, end = picked
+
+chosen = st.sidebar.multiselect(
+    "Categories (empty = all)", sorted(full["category"].unique())
+)
+
+clean = filter_transactions(full, start, end, chosen).copy()
+if clean.empty:
+    st.warning("No transactions match these filters.")
+    st.stop()
+
+st.caption(f"Showing {start} to {end} · {len(clean)} transactions · Currency: INR")
+
+# Calculate
+result = calculate_summary(clean)
+
 # 4 numbers
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Income", f"₹{result['income']:,.0f}")
@@ -58,6 +91,21 @@ if result["savings_rate"] is not None:
     col4.metric("Savings rate", f"{result['savings_rate']:.1f}%")
 else:
     col4.metric("Savings rate", "n/a")
+
+# Downloads
+d1, d2 = st.columns(2)
+d1.download_button(
+    "Download filtered transactions (CSV)",
+    transactions_csv(clean),
+    file_name="moneymap_transactions.csv",
+    mime="text/csv",
+)
+d2.download_button(
+    "Download summary (CSV)",
+    summary_csv(result, start, end),
+    file_name="moneymap_summary.csv",
+    mime="text/csv",
+)
 
 # Spending by category
 spend = clean[(clean["amount"] < 0) & (clean["category"] != "Internal Transfer")]
@@ -99,15 +147,16 @@ if top3 is not None:
 # Month vs month
 st.subheader("Month vs month")
 months = sorted(clean["month"].unique())
+last_month_full = full["date"].max().strftime("%Y-%m")
 
 if len(months) < 2:
-    st.info("Need at least 2 months of data to compare.")
+    st.info("Need at least 2 months in the selected range to compare.")
 else:
     c1, c2 = st.columns(2)
     old_m = c1.selectbox("Compare", months, index=len(months) - 2)
     new_m = c2.selectbox("with", months, index=len(months) - 1)
 
-    if new_m == months[-1] and is_incomplete_last_month(clean):
+    if new_m == last_month_full and is_incomplete_last_month(full):
         st.warning(
             f"{new_m} may be incomplete: the data ends well before the end of the month. "
             "Changes compared with a full month can look smaller than they really are."
@@ -137,6 +186,8 @@ if len(months) >= 2:
         st.caption(f"Evidence: {item['evidence']}")
         if item["caveat"]:
             st.caption(f"Caveat: {item['caveat']}")
+else:
+    st.write("Select a range with at least 2 months to see insights.")
 
 # Recurring payments
 st.subheader("Possible recurring payments")

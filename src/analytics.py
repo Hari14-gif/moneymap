@@ -82,6 +82,7 @@ def monthly_summary(df):
         return pd.DataFrame(columns=columns + ["savings_rate_change_pts"])
 
     out = pd.DataFrame(rows, columns=columns)
+    out["savings_rate"] = pd.to_numeric(out["savings_rate"], errors="coerce")  # None -> NaN
     out["savings_rate_change_pts"] = out["savings_rate"].diff()
     return out
 

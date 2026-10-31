@@ -74,3 +74,12 @@ def test_irregular_habit_is_not_recurring():
         ("2026-07-20", "Swiggy", "Food Delivery", -300),
     ])
     assert find_recurring(df).empty
+
+def test_monthly_summary_with_zero_income_does_not_crash():
+    df = make_df([
+        ("2026-07-05", "Swiggy", "Food Delivery", -400),
+        ("2026-08-05", "Swiggy", "Food Delivery", -500),
+    ])
+    out = monthly_summary(df)
+    assert out["savings_rate"].isna().all()
+    assert out["savings_rate_change_pts"].isna().all()
