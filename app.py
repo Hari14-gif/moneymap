@@ -4,7 +4,7 @@ import plotly.express as px
 
 from src.data_loader import load_transactions
 from src.data_cleaning import clean_transactions
-from src.categorization import add_categories
+from src.categorization import add_categories, apply_overrides, RULES
 from src.analytics import (
     calculate_summary,
     category_changes,
@@ -22,8 +22,12 @@ from src.reports import (
     category_report_csv,
     insights_report_csv,
 )
+from src.database import connect, save_override, load_overrides
+
+CATEGORY_CHOICES = sorted(set(RULES.values())) + ["Uncategorized"]
 
 st.title("MoneyMap")
+
 # Load (upload or sample)
 uploaded = st.file_uploader("Upload your transactions CSV", type="csv")
 
@@ -37,9 +41,11 @@ except ValueError as e:
     st.error(str(e))
     st.stop()
 
-# Clean -> categorize
+# Clean -> categorize -> apply saved corrections (corrections win)
 clean, rejected, summary = clean_transactions(raw)
 clean = add_categories(clean)
+db = connect()
+clean = apply_overrides(clean, load_overrides(db))
 
 # Data quality (always about the whole file, not the filters)
 with st.expander("Data quality"):
@@ -57,6 +63,27 @@ with st.expander("Data quality"):
 if clean.empty:
     st.error("No valid transactions to show.")
     st.stop()
+
+# Review and fix categories
+with st.expander("Review and fix categories"):
+    st.caption(
+        "Categories are suggestions from keyword rules. "
+        "A correction here replaces the suggestion and is remembered."
+    )
+    needs_review = sorted(clean.loc[clean["category"] == "Uncategorized", "description"].unique())
+    st.write(f"{len(needs_review)} description(s) are Uncategorized.")
+
+    others = [d for d in sorted(clean["description"].unique()) if d not in needs_review]
+    chosen_desc = st.selectbox("Description", needs_review + others)
+    current = clean.loc[clean["description"] == chosen_desc, "category"].iloc[0]
+    st.caption(f"Current category: {current}")
+
+    default_idx = CATEGORY_CHOICES.index(current) if current in CATEGORY_CHOICES else 0
+    new_cat = st.selectbox("Correct category", CATEGORY_CHOICES, index=default_idx)
+
+    if st.button("Save correction"):
+        save_override(db, chosen_desc, new_cat)
+        st.rerun()
 
 # Filters (applied ONCE, so every number below agrees)
 full = clean
