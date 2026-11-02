@@ -13,6 +13,7 @@ from src.analytics import (
     is_incomplete_last_month,
     top_merchants,
     filter_transactions,
+    match_refunds,
 )
 from src.insights import rising_category_insights, new_spending_insights
 from src.recurring_payments import find_recurring
@@ -292,3 +293,23 @@ else:
         "Rent and card bill payments are listed as they appear in your data. "
         "Card payments stand in for card purchases that are not recorded."
     )
+
+# Refunds
+links = match_refunds(full)
+if not links.empty:
+    links = links[
+        (links["refund_date"] >= pd.Timestamp(start))
+        & (links["refund_date"] <= pd.Timestamp(end))
+    ]
+
+if not links.empty:
+    st.subheader("Refunds")
+    shown = links.copy()
+    shown["refund_date"] = pd.to_datetime(shown["refund_date"]).dt.strftime("%Y-%m-%d")
+    shown["purchase_date"] = pd.to_datetime(shown["purchase_date"]).dt.strftime("%Y-%m-%d").fillna("-")
+    st.dataframe(shown)
+    st.caption(
+        "Refunds reduce expenses; they are not counted as income. "
+        "A refund is linked to the latest earlier purchase from the same merchant that is at least as large. "
+        "'ambiguous' means several purchases fit, and 'unmatched' means none did, so please review."
+    )    
