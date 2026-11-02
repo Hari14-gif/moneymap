@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 REQUIRED_COLUMNS = ["date", "description", "amount"]
@@ -32,7 +31,12 @@ def load_transactions(file):
     try:
         df = pd.read_csv(file)
     except pd.errors.EmptyDataError:
-        raise ValueError("The file is empty.")
+        raise ValueError("The file is empty.") from None
+    except (pd.errors.ParserError, UnicodeDecodeError):
+        raise ValueError(
+            "This file could not be read as a CSV. Please upload a plain CSV export "
+            "(not a PDF, image or Excel file) with the same number of columns on every row."
+        ) from None
 
     df.columns = df.columns.str.strip().str.lower()
     df = df.rename(columns=COLUMN_ALIASES)
@@ -43,7 +47,8 @@ def load_transactions(file):
 
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
-        raise ValueError(f"Missing columns: {missing}. Found: {list(df.columns)}")
+        found = [str(c)[:20] for c in list(df.columns)[:5]]
+        raise ValueError(f"Missing columns: {missing}. Found (first 5, shortened): {found}")
 
     if df.empty:
         raise ValueError("The file has headers but no transactions.")
