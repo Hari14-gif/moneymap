@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS transactions (
     UNIQUE (date, description, amount)
 );
 
+CREATE TABLE IF NOT EXISTS category_overrides (
+    description TEXT PRIMARY KEY,
+    category TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category);
 """
@@ -51,3 +57,20 @@ def import_transactions(conn, df, filename):
 
     inserted = cur.rowcount
     return {"batch_id": batch_id, "inserted": inserted, "skipped": len(rows) - inserted}
+
+
+def save_override(conn, description, category):
+    """Remember a correction. Saving the same description again replaces the old one."""
+    conn.execute(
+        "INSERT INTO category_overrides (description, category) VALUES (?, ?) "
+        "ON CONFLICT(description) DO UPDATE SET "
+        "category = excluded.category, updated_at = CURRENT_TIMESTAMP",
+        (description, category),
+    )
+    conn.commit()
+
+
+def load_overrides(conn):
+    """All saved corrections as a {description: category} dictionary."""
+    rows = conn.execute("SELECT description, category FROM category_overrides").fetchall()
+    return dict(rows)
