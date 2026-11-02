@@ -115,3 +115,46 @@ def filter_transactions(df, start=None, end=None, categories=None):
     if categories:                      # None or an empty list means "all categories"
         out = out[out["category"].isin(categories)]
     return out
+
+def match_refunds(df):
+    """Link each refund to its most likely original purchase, with a status."""
+    columns = [
+        "refund_date", "refund_description", "refund_amount",
+        "purchase_date", "purchase_description", "purchase_amount", "status",
+    ]
+    refunds = df[df["category"] == "Refunds"]
+    purchases = df[df["amount"] < 0]
+    rows = []
+
+    for _, r in refunds.iterrows():
+        words = str(r["description"]).split()
+        merchant = words[0].lower() if words else ""
+
+        candidates = purchases[
+            (purchases["date"] <= r["date"])
+            & (purchases["amount"].abs() >= r["amount"])
+        ]
+        if merchant:
+            candidates = candidates[
+                candidates["description"].str.lower().str.contains(merchant, regex=False)
+            ]
+        else:
+            candidates = candidates.iloc[0:0]
+
+        if candidates.empty:
+            match, status = None, "unmatched"
+        else:
+            match = candidates.sort_values("date").iloc[-1]
+            status = "matched" if len(candidates) == 1 else "ambiguous"
+
+        rows.append({
+            "refund_date": r["date"],
+            "refund_description": r["description"],
+            "refund_amount": r["amount"],
+            "purchase_date": None if match is None else match["date"],
+            "purchase_description": None if match is None else match["description"],
+            "purchase_amount": None if match is None else match["amount"],
+            "status": status,
+        })
+
+    return pd.DataFrame(rows, columns=columns)
