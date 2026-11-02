@@ -39,3 +39,11 @@ def add_categories(df):
     out = df.copy()
     out["category"] = out["description"].apply(categorize)
     return out
+
+def apply_overrides(df, overrides):
+    """Corrections win over the automatic categories. Descriptions stay untouched."""
+    out = df.copy()
+    if overrides:
+        corrected = out["description"].map(overrides)
+        out["category"] = corrected.fillna(out["category"])
+    return out
