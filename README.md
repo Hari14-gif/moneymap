@@ -103,8 +103,6 @@ Full details: [docs/methodology.md](docs/methodology.md).
 
 ## Screenshots
 
-_Add screenshots here: Overview, Spending, Cash flow, Insights, Data and settings._
-
 ## Testing
 
 ```powershell
