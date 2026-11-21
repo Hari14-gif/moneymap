@@ -120,4 +120,4 @@ exact descriptions, so a merchant whose description changes each month is missed
 - `UNIQUE (date, description, amount)` makes repeated imports safe: importing the
   same file twice inserts nothing. Two identical purchases on the same day count as
   one (a documented trade-off).
-- SQL and pandas split of responsibilities: see `docs/sql_vs_pandas.md`.
+- SQL and pandas split of responsibilities: see `docs/sql_vs_pandas.md`. 

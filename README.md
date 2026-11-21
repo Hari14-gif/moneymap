@@ -103,7 +103,21 @@ Full details: [docs/methodology.md](docs/methodology.md).
 
 ## Screenshots
 
-## Testing
+#Overview
+ ![user interface](<Screenshot 2026-11-22 013354-1.png>) ![user interface](<Screenshot 2026-11-22 013442-1.png>) ![user interface](<Screenshot 2026-11-22 013505-1.png>)
+
+ #spending
+![alt text](<Screenshot 2026-11-22 013547.png>)
+
+#cash flow
+![alt text](<Screenshot 2026-11-22 013616.png>)
+
+#Insights 
+![alt text](<Screenshot 2026-11-22 013642.png>)
+
+#Data Quality
+![alt text](<Screenshot 2026-11-22 013702.png>)
+    ## Testing
 
 ```powershell
 python -m pytest -v
