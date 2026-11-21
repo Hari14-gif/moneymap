@@ -57,6 +57,7 @@ src/
   reports.py              CSV exports
 tests/                    pytest tests for each module
 docs/                     methodology, data dictionary, SQL vs pandas
+sql/analysis_queries.sql  the SQL queries (monthly totals, merchants, month-over-month, recurring)              
 data/sample_transactions.csv   synthetic demo data
 ```
 
